@@ -142,13 +142,18 @@ async def root():
             margin-bottom: 30px;
         }
         
+        .scan-form h2 {
+            margin-bottom: 24px;
+        }
+        
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
 
         .form-row {
             display: flex;
-            gap: 20px;
+            gap: 24px;
+            margin-bottom: 20px;
         }
 
         .form-row .form-group {
@@ -161,6 +166,23 @@ async def root():
 
         .form-row .form-group.timeout-group {
             flex: 1;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #777;
+            margin-top: 4px;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-row .form-group {
+                margin-bottom: 12px;
+            }
         }
         
         label {
@@ -187,8 +209,8 @@ async def root():
         .checkbox-group {
             display: flex;
             flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 10px;
+            gap: 16px 24px;
+            margin-top: 12px;
         }
         
         .checkbox-item {
@@ -197,29 +219,33 @@ async def root():
             gap: 8px;
         }
         
-        .checkbox-item input[type="checkbox"] {
+        .checkbox-item input[type="checkbox"],
+        .checkbox-item input[type="radio"] {
             width: 20px;
             height: 20px;
             cursor: pointer;
+            accent-color: #000000;
         }
         
         .btn {
-            background: #007bff;
-            color: white;
+            background: #000000;
+            color: #ffffff;
             border: none;
-            padding: 15px 40px;
-            font-size: 18px;
-            border-radius: 5px;
+            padding: 12px 32px;
+            font-size: 15px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
+            margin-top: 8px;
         }
         
         .btn:hover {
-            background: #0056b3;
+            background: #222222;
         }
         
         .btn:disabled {
-            background: #ccc;
+            background: #cccccc;
+            color: #666666;
             cursor: not-allowed;
         }
         
@@ -255,8 +281,8 @@ async def root():
         }
         
         .status-badge.running {
-            background: #007bff;
-            color: white;
+            background: #000000;
+            color: #ffffff;
         }
         
         .status-badge.completed {
@@ -280,7 +306,7 @@ async def root():
         
         .progress-fill {
             height: 100%;
-            background: #007bff;
+            background: #000000;
             width: 0%;
             transition: width 0.3s;
             display: flex;
@@ -358,8 +384,8 @@ async def root():
         }
         
         .severity-badge.low {
-            background: #007bff;
-            color: white;
+            background: #000000;
+            color: #ffffff;
         }
         
         .stats-grid {
@@ -423,15 +449,18 @@ async def root():
             <div class="scan-form">
                 <h2 style="margin-bottom: 20px;">Start Security Scan</h2>
                 <form id="scanForm">
+                    <div id="errorBox" style="display:none;color:#b00020;font-size:13px;margin-bottom:10px;"></div>
                     <div class="form-row">
                         <div class="form-group url-group">
                             <label for="url">Target URL *</label>
                             <input type="url" id="url" name="url" required 
                                    placeholder="https://example.com" value="">
+                            <div class="helper-text">Include scheme, e.g. https://your-app.com</div>
                         </div>
                         <div class="form-group timeout-group">
                             <label for="timeout">Timeout (seconds)</label>
                             <input type="number" id="timeout" name="timeout" value="10" min="1" max="60">
+                            <div class="helper-text">Per-request timeout (1–60 seconds)</div>
                         </div>
                     </div>
                     
@@ -498,14 +527,37 @@ async def root():
             e.preventDefault();
             
             const formData = new FormData(e.target);
+            const errorBox = document.getElementById('errorBox');
+            errorBox.style.display = 'none';
+            errorBox.textContent = '';
+
+            const rawTimeout = formData.get('timeout');
+            let timeoutVal = parseInt(rawTimeout, 10);
+            if (Number.isNaN(timeoutVal)) timeoutVal = 10;
+            if (timeoutVal < 1) timeoutVal = 1;
+            if (timeoutVal > 60) timeoutVal = 60;
+            document.getElementById('timeout').value = timeoutVal;
+
+            const urlVal = (formData.get('url') || '').trim();
+            if (!urlVal) {
+                errorBox.textContent = 'Please enter a target URL.';
+                errorBox.style.display = 'block';
+                return;
+            }
+            if (!/^https?:\/\//i.test(urlVal)) {
+                errorBox.textContent = 'URL must start with http:// or https://';
+                errorBox.style.display = 'block';
+                return;
+            }
+
             const data = {
-                url: formData.get('url'),
+                url: urlVal,
                 scan_headers: formData.get('scan_headers') === 'on',
                 scan_endpoints: formData.get('scan_endpoints') === 'on',
                 scan_xss: formData.get('scan_xss') === 'on',
                 scan_redirect: formData.get('scan_redirect') === 'on',
                 scan_sqli: formData.get('scan_sqli') === 'on',
-                timeout: parseInt(formData.get('timeout')) || 10,
+                timeout: timeoutVal,
                 verify_ssl: false
             };
             
