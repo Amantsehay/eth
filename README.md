@@ -62,7 +62,7 @@ Request Handler
 Result Aggregator
    |
    v
-CLI / JSON Report
+CLI / JSON Report / Web Interface
 ```
 
 ### Components
@@ -75,7 +75,7 @@ CLI / JSON Report
 
 ## 📋 Requirements
 
-- Python 3.8 or higher
+- Python 3.8.1 or higher
 - Poetry (for package management)
 
 ## 🚀 Installation
@@ -107,39 +107,42 @@ poetry shell
 
 If you prefer not to use Poetry:
 ```bash
-pip install requests urllib3
+pip install requests urllib3 fastapi uvicorn pydantic
 ```
 
 ## 📖 Usage
 
-### Using Poetry
+### Web Interface (FastAPI)
+
+Start the web server:
+```bash
+poetry run uvicorn web_scanner.api:app --reload --host 0.0.0.0 --port 8000
+```
+
+Or use the convenience script:
+```bash
+poetry run python -m web_scanner.server
+```
+
+Then open your browser to: `http://localhost:8000`
+
+The web interface provides:
+- ✅ Easy-to-use scan form
+- ✅ Real-time scan status updates
+- ✅ Beautiful report visualization
+- ✅ Interactive vulnerability cards
+
+### Command Line Interface
 
 ```bash
 # Full security scan
 poetry run python -m web_scanner -u https://example.com
-
-# Or use the installed script (after poetry install)
-poetry run web-scanner -u https://example.com
 
 # Scan with JSON output
 poetry run python -m web_scanner -u https://example.com -o results.json
 
 # Verbose output
 poetry run python -m web_scanner -u https://example.com -v
-```
-
-### Using Python Directly
-
-If installed without Poetry:
-```bash
-# Full security scan
-python -m web_scanner -u https://example.com
-
-# Scan with JSON output
-python -m web_scanner -u https://example.com -o results.json
-
-# Verbose output
-python -m web_scanner -u https://example.com -v
 ```
 
 ### Advanced Usage
@@ -173,7 +176,74 @@ poetry run python -m web_scanner -u https://example.com --no-xss --no-redirect
 -h, --help         Show help message
 ```
 
+## 🌐 Web Interface API Endpoints
+
+### POST `/api/scan`
+Start a new security scan.
+
+**Request Body:**
+```json
+{
+  "url": "https://example.com",
+  "scan_headers": true,
+  "scan_endpoints": true,
+  "scan_xss": true,
+  "scan_redirect": true,
+  "timeout": 10,
+  "verify_ssl": false
+}
+```
+
+**Response:**
+```json
+{
+  "scan_id": "uuid-here",
+  "status": "started"
+}
+```
+
+### GET `/api/status/{scan_id}`
+Get scan status.
+
+**Response:**
+```json
+{
+  "scan_id": "uuid-here",
+  "status": "running",
+  "progress": "Scanning for exposed endpoints...",
+  "created_at": "2026-01-27T10:58:16",
+  "completed_at": null
+}
+```
+
+### GET `/api/results/{scan_id}`
+Get scan results (only available when scan is completed).
+
+**Response:**
+```json
+{
+  "scan_info": { ... },
+  "summary": { ... },
+  "header_analysis": { ... },
+  "endpoint_scan": { ... },
+  "xss_test": { ... },
+  "redirect_test": { ... }
+}
+```
+
+### GET `/api/scans`
+List all scans.
+
 ## 📊 Output
+
+### Web Interface
+
+The web interface provides:
+- Real-time status updates with progress bar
+- Beautiful vulnerability cards with severity indicators
+- Statistics dashboard
+- Detailed vulnerability listings
+- Color-coded severity levels
 
 ### Console Report
 
@@ -210,15 +280,16 @@ Export detailed results to JSON for further analysis:
 
 ## 🎯 Example Scans
 
-### 1. Quick Security Check
+### 1. Quick Security Check (CLI)
 ```bash
 poetry run python -m web_scanner -u https://your-app.com
 ```
 
-### 2. Comprehensive Assessment
-```bash
-poetry run python -m web_scanner -u https://your-app.com -o security_report.json -v
-```
+### 2. Comprehensive Assessment (Web Interface)
+1. Start the server: `poetry run uvicorn web_scanner.api:app --reload`
+2. Open `http://localhost:8000`
+3. Enter URL and click "Start Scan"
+4. View real-time progress and results
 
 ### 3. Header Analysis Only
 ```bash
@@ -279,6 +350,9 @@ poetry run python -m web_scanner -u https://your-app.com --no-endpoints --no-xss
 **Issue**: False positives
 - **Solution**: Review findings manually, some detections may need verification
 
+**Issue**: Web interface not loading
+- **Solution**: Ensure port 8000 is available, check firewall settings
+
 ## 📚 Educational Purpose
 
 This tool is excellent for:
@@ -290,12 +364,12 @@ This tool is excellent for:
 
 ## 🔧 Technical Details
 
-- **Language**: Python 3.8+
+- **Language**: Python 3.8.1+
 - **Package Manager**: Poetry
-- **Dependencies**: requests, urllib3
+- **Dependencies**: requests, urllib3, fastapi, uvicorn, pydantic
 - **Architecture**: Modular design with separate components
 - **Threading**: Single-threaded (sequential requests)
-- **Output**: Console + JSON export
+- **Output**: Console + JSON export + Web Interface
 - **Project Structure**: Proper Python package structure
 
 ## 🤝 Contributing
@@ -307,7 +381,8 @@ Ideas for improvements:
 - Improve XSS detection accuracy
 - Add more security header checks
 - Implement rate limiting
-- Add GUI interface
+- Add WebSocket support for real-time updates
+- Add database storage for scan history
 
 ## 📄 License
 

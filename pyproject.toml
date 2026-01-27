@@ -27,6 +27,9 @@ classifiers = [
 python = ">=3.8.1,<4.0"
 requests = "^2.28.0"
 urllib3 = "^1.26.0"
+fastapi = "^0.104.0"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+pydantic = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"
@@ -37,6 +40,7 @@ mypy = "^1.0.0"
 
 [tool.poetry.scripts]
 web-scanner = "web_scanner.__main__:main"
+web-scanner-server = "web_scanner.server:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -14,10 +14,11 @@ from .result_aggregator import ResultAggregator
 class WebSecurityScanner:
     """Main scanner class that orchestrates all components."""
     
-    def __init__(self, timeout: int = 10, verify_ssl: bool = False, verbose: bool = False):
+    def __init__(self, timeout: int = 10, verify_ssl: bool = False, verbose: bool = False, silent: bool = False):
         self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.verbose = verbose
+        self.silent = silent
         self.request_handler = RequestHandler(timeout=timeout, verify_ssl=verify_ssl)
         self.header_analyzer = HeaderAnalyzer(self.request_handler)
         self.endpoint_scanner = EndpointScanner(self.request_handler)
@@ -25,7 +26,7 @@ class WebSecurityScanner:
         self.result_aggregator = ResultAggregator()
     
     def scan(self, url: str, scan_headers: bool = True, scan_endpoints: bool = True,
-             scan_xss: bool = True, scan_redirect: bool = True):
+             scan_xss: bool = True, scan_redirect: bool = True, scan_sqli: bool = True):
         """Perform comprehensive security scan."""
         
         # Validate URL
@@ -39,7 +40,8 @@ class WebSecurityScanner:
         if not url.startswith('http://') and not url.startswith('https://'):
             url = 'https://' + url
         
-        print(f"""
+        if not self.silent:
+            print(f"""
 ╔══════════════════════════════════════════════════════════╗
 ║     Web Application Security Scanner v1.0                ║
 ║     OWASP Top 10 - Basic Security Assessment            ║
@@ -54,55 +56,72 @@ class WebSecurityScanner:
         try:
             # 1. Header Analysis
             if scan_headers:
-                print("[*] Analyzing security headers...")
+                if not self.silent:
+                    print("[*] Analyzing security headers...")
                 header_results = self.header_analyzer.analyze(url)
                 self.result_aggregator.add_header_analysis(header_results)
-                if self.verbose:
+                if self.verbose and not self.silent:
                     missing = len(header_results.get('missing_headers', []))
                     print(f"    Found {missing} missing security header(s)")
             
             # 2. Endpoint Scanning
             if scan_endpoints:
-                print("[*] Scanning for exposed endpoints and sensitive files...")
+                if not self.silent:
+                    print("[*] Scanning for exposed endpoints and sensitive files...")
                 base_url = self.request_handler.get_base_url(url)
                 endpoint_results = self.endpoint_scanner.scan(base_url)
                 self.result_aggregator.add_endpoint_scan(endpoint_results)
-                if self.verbose:
+                if self.verbose and not self.silent:
                     found = len(endpoint_results.get('found_endpoints', []))
                     print(f"    Found {found} exposed endpoint(s)")
             
             # 3. XSS Testing
             if scan_xss:
-                print("[*] Testing for reflected XSS vulnerabilities...")
+                if not self.silent:
+                    print("[*] Testing for reflected XSS vulnerabilities...")
                 xss_results = self.payload_tester.test_xss(url)
                 self.result_aggregator.add_xss_test(xss_results)
-                if self.verbose:
+                if self.verbose and not self.silent:
                     vulnerable = len(xss_results.get('vulnerable_parameters', []))
                     print(f"    Tested XSS payloads, found {vulnerable} vulnerable parameter(s)")
             
             # 4. Open Redirect Testing
             if scan_redirect:
-                print("[*] Testing for open redirect vulnerabilities...")
+                if not self.silent:
+                    print("[*] Testing for open redirect vulnerabilities...")
                 redirect_results = self.payload_tester.test_open_redirect(url)
                 self.result_aggregator.add_redirect_test(redirect_results)
-                if self.verbose:
+                if self.verbose and not self.silent:
                     vulnerable = len(redirect_results.get('vulnerable_parameters', []))
                     print(f"    Tested redirect payloads, found {vulnerable} vulnerable parameter(s)")
+
+            # 5. SQL Injection Testing (basic, error-based)
+            if scan_sqli:
+                if not self.silent:
+                    print("[*] Testing for SQL injection (basic error-based)...")
+                sqli_results = self.payload_tester.test_sqli(url)
+                self.result_aggregator.add_sqli_test(sqli_results)
+                if self.verbose and not self.silent:
+                    vulnerable = len(sqli_results.get('vulnerable_parameters', []))
+                    print(f"    Tested SQLi payloads, found {vulnerable} potentially vulnerable parameter(s)")
             
             # Generate summary
-            print("\n[*] Generating report...")
+            if not self.silent:
+                print("\n[*] Generating report...")
             self.result_aggregator.generate_summary()
             
             return True
             
         except KeyboardInterrupt:
-            print("\n\n[!] Scan interrupted by user")
+            if not self.silent:
+                print("\n\n[!] Scan interrupted by user")
             return False
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e:
-            print(f"\n[-] Error during scan: {e}")
-            if self.verbose:
+            if not self.silent:
+                print(f"\n[-] Error during scan: {e}")
+            if self.verbose and not self.silent:
                 import traceback
                 traceback.print_exc()
             return False

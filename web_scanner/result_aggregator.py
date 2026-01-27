@@ -18,6 +18,7 @@ class ResultAggregator:
             'endpoint_scan': {},
             'xss_test': {},
             'redirect_test': {},
+            'sqli_test': {},
             'summary': {}
         }
     
@@ -36,6 +37,10 @@ class ResultAggregator:
     def add_redirect_test(self, test: Dict):
         """Add redirect test results."""
         self.results['redirect_test'] = test
+
+    def add_sqli_test(self, test: Dict):
+        """Add SQL injection test results."""
+        self.results['sqli_test'] = test
     
     def set_scan_info(self, url: str, timestamp: str = None):
         """Set scan information."""
@@ -61,6 +66,9 @@ class ResultAggregator:
         
         if 'vulnerabilities' in self.results['redirect_test']:
             all_vulnerabilities.extend(self.results['redirect_test']['vulnerabilities'])
+
+        if 'vulnerabilities' in self.results['sqli_test']:
+            all_vulnerabilities.extend(self.results['sqli_test']['vulnerabilities'])
         
         # Count by severity
         high_count = sum(1 for v in all_vulnerabilities if v.get('severity') == 'high')
@@ -176,6 +184,18 @@ class ResultAggregator:
                 for vuln in vulnerable:
                     print(f"    - Parameter: {vuln['parameter']}")
                     print(f"      Redirects to: {vuln['redirect_location']}")
+
+        # SQL Injection Test
+        sqli_test = self.results.get('sqli_test', {})
+        if sqli_test:
+            vulnerable = sqli_test.get('vulnerable_parameters', [])
+            if vulnerable:
+                print("\n" + "-"*70)
+                print("SQL INJECTION TEST (BASIC)")
+                print("-"*70)
+                print(f"\n[!] Found potential SQL injection in {len(vulnerable)} parameter(s):")
+                for vuln in vulnerable:
+                    print(f"    - Parameter: {vuln['parameter']}")
         
         # All Vulnerabilities
         all_vulns = summary.get('all_vulnerabilities', [])
