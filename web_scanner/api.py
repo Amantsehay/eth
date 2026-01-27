@@ -457,11 +457,6 @@ async def root():
                                    placeholder="https://example.com" value="">
                             <div class="helper-text">Include scheme, e.g. https://your-app.com</div>
                         </div>
-                        <div class="form-group timeout-group">
-                            <label for="timeout">Timeout (seconds)</label>
-                            <input type="number" id="timeout" name="timeout" value="10" min="1" max="60">
-                            <div class="helper-text">Per-request timeout (1–60 seconds)</div>
-                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -531,13 +526,6 @@ async def root():
             errorBox.style.display = 'none';
             errorBox.textContent = '';
 
-            const rawTimeout = formData.get('timeout');
-            let timeoutVal = parseInt(rawTimeout, 10);
-            if (Number.isNaN(timeoutVal)) timeoutVal = 10;
-            if (timeoutVal < 1) timeoutVal = 1;
-            if (timeoutVal > 60) timeoutVal = 60;
-            document.getElementById('timeout').value = timeoutVal;
-
             const urlVal = (formData.get('url') || '').trim();
             if (!urlVal) {
                 errorBox.textContent = 'Please enter a target URL.';
@@ -557,7 +545,6 @@ async def root():
                 scan_xss: formData.get('scan_xss') === 'on',
                 scan_redirect: formData.get('scan_redirect') === 'on',
                 scan_sqli: formData.get('scan_sqli') === 'on',
-                timeout: timeoutVal,
                 verify_ssl: false
             };
             
